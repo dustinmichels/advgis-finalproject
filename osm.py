@@ -56,8 +56,19 @@ def extract_width(value):
 def get_network(place: str, network_type: str):
     G = ox.graph_from_place(place, network_type=network_type)
     _, edges = ox.graph_to_gdfs(G)
+
+    # parse maxspeed and width
     edges["maxspeed_int"] = edges["maxspeed"].apply(extract_maxspeed)
     edges["width_float"] = edges["width"].apply(extract_width)
+
+    # drop some unneeded columns
+    edges = edges.drop(
+        ["ref", "service", "access", "bridge", "tunnel", "junction"], axis=1
+    )
+
+    # add buffer column (half of width)
+    edges["buffer_dist"] = edges["width_float"] / 2.0
+
     return edges
 
 
@@ -67,13 +78,10 @@ def main():
     print("Get bike network")
     edges_bike = get_network(place, "bike")
 
-    print("Get drive network")
-    edges_drive = get_network(place, "drive")
-
     print("Saving to GeoPackage")
-    outfp = "data/somerville.gpkg"
-    edges_bike.to_file(outfp, layer="bike_edges", driver="GPKG")
-    edges_drive.to_file(outfp, layer="drive_edges", driver="GPKG")
+    edges_bike.to_file(
+        "data/somerville_bike_network.gpkg", layer="edges", driver="GPKG"
+    )
 
 
 if __name__ == "__main__":
