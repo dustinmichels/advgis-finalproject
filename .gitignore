@@ -1,0 +1,20 @@
+data/
+
+# notebooks
+notebooks/.ipynb_checkpoints/
+notebooks/cache/
+
+# QGIS project files
+*.qgz
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
