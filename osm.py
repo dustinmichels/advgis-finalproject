@@ -1,10 +1,50 @@
+import re
+
+import numpy as np
 import osmnx as ox
 import pandas as pd
 
-# Example: get driving network for a city
-G = ox.graph_from_place(
-    "Somerville, Massachusetts, USA", retain_all=True, network_type="bike"
-)
 
-# Convert to GeoDataFrames (nodes + edges)
-nodes, edges = ox.graph_to_gdfs(G)
+def extract_maxspeed(x):
+    # Handle NaN early
+    if x is None or (isinstance(x, float) and np.isnan(x)):
+        return np.nan
+
+    # Handle lists and numpy arrays uniformly
+    if isinstance(x, (list, np.ndarray)):
+        speeds = [extract_maxspeed(i) for i in x]
+        # filter out NaNs
+        speeds = [s for s in speeds if not pd.isna(s)]
+        return max(speeds) if speeds else np.nan
+
+    # Convert to string and extract digits
+    x_str = str(x)
+    nums = re.findall(r"\d+", x_str)
+
+    return int(max(nums, key=int)) if nums else np.nan
+
+
+def get_network(place: str, network_type: str):
+    G = ox.graph_from_place(place, network_type=network_type)
+    _, edges = ox.graph_to_gdfs(G)
+    edges["maxspeed_int"] = edges["maxspeed"].apply(extract_maxspeed)
+    return edges
+
+
+def main():
+    place = "Somerville, Massachusetts, USA"
+
+    print("Get bike network")
+    edges_bike = get_network(place, "bike")
+
+    print("Get drive network")
+    edges_drive = get_network(place, "drive")
+
+    print("Saving to GeoPackage")
+    outfp = "data/somerville.gpkg"
+    edges_bike.to_file(outfp, layer="bike_edges", driver="GPKG")
+    edges_drive.to_file(outfp, layer="drive_edges", driver="GPKG")
+
+
+if __name__ == "__main__":
+    main()

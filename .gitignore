@@ -1,4 +1,5 @@
 data/
+cache/
 
 # notebooks
 notebooks/.ipynb_checkpoints/
