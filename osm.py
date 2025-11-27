@@ -7,11 +7,31 @@ import pandas as pd
 from util import extract_maxspeed, extract_width, first_if_list
 
 # add cycleway to useful tags
-ox.settings.useful_tags_way = ox.settings.useful_tags_way + ["cycleway"]
+ox.settings.useful_tags_way = ox.settings.useful_tags_way + [
+    "massgis:way_id",
+    "condition",
+    "surface",
+    "bicycle",
+    "cycleway",
+    "cycleway:left",
+    "cycleway:right",
+    "cycleway:both",
+    "cycleway:buffer",
+    "sidewalk:left",
+    "sidewalk:right",
+    "sidewalk:both",
+    "parking:left",
+    "parking:right",
+    "parking:both",
+]
 
 
-def get_network(place: str, network_type: str):
+def get_network(place: str, network_type: str = "bike"):
     G = ox.graph_from_place(place, network_type=network_type)
+
+    # project graph to EPSG:26986 (Massachusetts Mainland)
+    # G = ox.project_graph(G, to_crs="EPSG:26986")
+
     nodes, edges = ox.graph_to_gdfs(G)
     return nodes, edges
 
@@ -35,7 +55,10 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
     edges["width_float"] = edges["width_float"].fillna(10.0)
 
     # add buffer column (half of width)
-    edges["buffer_dist"] = edges["width_float"] / 2.0
+    edges["width_half"] = edges["width_float"] / 2.0
+
+    # sort columns alphabetically
+    edges = edges.reindex(sorted(edges.columns), axis=1)
 
     return edges
 
@@ -46,11 +69,15 @@ def main():
     nodes, edges = get_network(place, "bike")
 
     print("Process network")
-    edges_bike = process_network(edges)
+    edges = process_network(edges)
 
     print("Saving to GeoPackage")
-    edges_bike.to_file(
+    edges.to_file(
         "data/somerville_network.gpkg", layer="somerville_streets", driver="GPKG"
+    )
+
+    nodes.to_file(
+        "data/somerville_network.gpkg", layer="somerville_nodes", driver="GPKG"
     )
 
 
