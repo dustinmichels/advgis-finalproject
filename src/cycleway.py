@@ -14,7 +14,7 @@ CYCLEWAY_RANKING = {
     "shared_lane": 3,  # in traffic
     "share_busway": 5,  # shared with bus
     "lane": 7,  # dedicated bike lane, not separate
-    "lane_buffered": 8,  # Added buffered lane type
+    "lane_buffered": 7.5,  # Added buffered lane type
     "track": 8,  # totally separated (but sometimes used for lane with buffer)
     "separate": 10,  # totally separated
 }
@@ -52,37 +52,40 @@ def pick_best(values):
     return max(values, key=lambda v: CYCLEWAY_RANKING.get(v, 0), default=None)
 
 
-def apply_buffer_upgrade(row):
-    """Upgrade 'lane' to 'lane_buffered' if cycleway:buffer exists."""
+def apply_buffer_to_list(values, row):
+    """Upgrade 'lane' to 'lane_buffered' in a list if buffer exists."""
+    buffer_val = row.get("cycleway:buffer")
+    if buffer_val is None:
+        buffer_val = row.get("cycleway:separation")
 
-    cycleway_type = row["cycleway_type"]
+    # Check if buffer exists and is valid
+    has_buffer = (
+        buffer_val is not None
+        and buffer_val != "no"
+        and not (isinstance(buffer_val, float) and pd.isna(buffer_val))
+    )
 
-    if cycleway_type == "lane":
-        buffer_val = row.get("cycleway:buffer")
-        if buffer_val is None:
-            buffer_val = row.get("cycleway:separation")
+    if not has_buffer:
+        return values
 
-        # Check if buffer exists and is not empty/no/nan
-        if buffer_val is not None and buffer_val != "no":
-            if not (isinstance(buffer_val, float) and pd.isna(buffer_val)):
-                return "lane_buffered"
-
-    return cycleway_type
+    # Upgrade any 'lane' to 'lane_buffered'
+    return ["lane_buffered" if v == "lane" else v for v in values]
 
 
 def combine_and_score_cycleway_types(df):
     # combine all cycleway vals
     df["cycleway_all"] = df.apply(combine_cycleways, axis=1)
 
+    # apply buffer upgrade to list
+    df["cycleway_all"] = df.apply(
+        lambda row: apply_buffer_to_list(row["cycleway_all"], row), axis=1
+    )
+
     # pick best
     df["cycleway_type"] = df["cycleway_all"].apply(pick_best)
 
-    # upgrade lane to lane_buffered if buffer exists
-    # TODO: maybe do this before picking best?
-    df["cycleway_type"] = df.apply(apply_buffer_upgrade, axis=1)
-
     # check if highway=cycleway OR highway=path + bicycle=designated
-    # if so, set cycleway_type to 'separate' and score to 10
+    # if so, set cycleway_type to 'separate'
     is_cycleway = (df["highway"] == "cycleway") | (
         (df["highway"] == "path") & (df["bicycle"] == "designated")
     )

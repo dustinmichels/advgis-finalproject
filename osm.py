@@ -4,6 +4,8 @@ import pandas as pd
 from src.cycleway import combine_and_score_cycleway_types
 from util import extract_maxspeed, extract_width, first_if_list
 
+OUTFILE = "data/somerville_network.gpkg"
+
 # add cycleway to useful tags
 ox.settings.useful_tags_way = ox.settings.useful_tags_way + [
     "massgis:way_id",
@@ -42,6 +44,7 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
     )
 
     # flatten rows if they contain lists
+    # TODO: this should be chose best
     rows_to_flatten = ["highway", "lanes"]
     for col in rows_to_flatten:
         edges[col] = first_if_list(edges[col])
@@ -74,13 +77,8 @@ def main():
     edges = combine_and_score_cycleway_types(edges)
 
     print("Saving to GeoPackage")
-    edges.to_file(
-        "data/somerville_network.gpkg", layer="somerville_streets", driver="GPKG"
-    )
-
-    nodes.to_file(
-        "data/somerville_network.gpkg", layer="somerville_nodes", driver="GPKG"
-    )
+    edges.to_file(OUTFILE, layer="somerville_streets", driver="GPKG")
+    nodes.to_file(OUTFILE, layer="somerville_nodes", driver="GPKG")
 
 
 if __name__ == "__main__":
