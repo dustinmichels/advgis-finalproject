@@ -2,8 +2,10 @@ import os
 from datetime import date, timedelta
 
 import duckdb
+import geopandas as gpd
 import kagglehub
 import pandas as pd
+from shapely.geometry import Point
 
 
 def download_data_return_path() -> str:
@@ -72,6 +74,35 @@ def filter_data(data, bbox: tuple, years: int = 4) -> pd.DataFrame:
     """
     )
     return filtered.df()
+
+
+def make_geospatial(df):
+    # rename Start_Lat and Start_Lng to Latitude and Longitude
+    df = df.rename(columns={"Start_Lat": "Latitude", "Start_Lng": "Longitude"})
+
+    # First, make sure lat/lon are numeric
+    df["Latitude"] = pd.to_numeric(df["Latitude"], errors="coerce")
+    df["Longitude"] = pd.to_numeric(df["Longitude"], errors="coerce")
+
+    # Drop rows with missing coordinates
+    df = df.dropna(subset=["Latitude", "Longitude"])
+
+    # Create Point geometry from lon/lat
+    geometry = [Point(xy) for xy in zip(df["Longitude"], df["Latitude"])]
+
+    # Create GeoDataFrame
+    gdf = gpd.GeoDataFrame(df, geometry=geometry)
+
+    # Set CRS to WGS84 (EPSG:4326)
+    gdf.set_crs(epsg=4326, inplace=True)
+
+    # Convert to EPSG:26986 (Massachusetts Mainland)
+    gdf = gdf.to_crs(epsg=26986)
+
+    # Optional: save to a file
+    # gdf.to_file("data/crashes.geojson", driver="GeoJSON")
+
+    return gdf
 
 
 def main():

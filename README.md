@@ -6,6 +6,15 @@ Clear notebooks:
 uv run --with jupyter ./clear_notebooks.sh
 ```
 
+## Map Types
+
+### Cycleway Types
+
+Determining what type of cycleway infrastructure exists on each street segment, requires combining multiple OpenStreetMap tags.
+
+- "cycleway", "cycleway:both", "cycleway:left", "cycleway:right" are all accumulated into a single list.
+- If there is "lane" and "cycleway:buffer" or "cycleway:separation", we upgrade the type to "lane_buffered".
+
 ### Tests
 
 ```sh

@@ -1,9 +1,7 @@
-import re
-
-import numpy as np
 import osmnx as ox
 import pandas as pd
 
+from src.cycleway import combine_and_score_cycleway_types
 from util import extract_maxspeed, extract_width, first_if_list
 
 # add cycleway to useful tags
@@ -17,6 +15,7 @@ ox.settings.useful_tags_way = ox.settings.useful_tags_way + [
     "cycleway:right",
     "cycleway:both",
     "cycleway:buffer",
+    "cycleway:separation",
     "sidewalk:left",
     "sidewalk:right",
     "sidewalk:both",
@@ -30,7 +29,7 @@ def get_network(place: str, network_type: str = "bike"):
     G = ox.graph_from_place(place, network_type=network_type)
 
     # project graph to EPSG:26986 (Massachusetts Mainland)
-    # G = ox.project_graph(G, to_crs="EPSG:26986")
+    G = ox.project_graph(G, to_crs="EPSG:26986")
 
     nodes, edges = ox.graph_to_gdfs(G)
     return nodes, edges
@@ -43,7 +42,7 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
     )
 
     # flatten rows if they contain lists
-    rows_to_flatten = ["highway", "lanes", "cycleway"]
+    rows_to_flatten = ["highway", "lanes"]
     for col in rows_to_flatten:
         edges[col] = first_if_list(edges[col])
 
@@ -70,6 +69,9 @@ def main():
 
     print("Process network")
     edges = process_network(edges)
+
+    print("Combine cycleway types")
+    edges = combine_and_score_cycleway_types(edges)
 
     print("Saving to GeoPackage")
     edges.to_file(
