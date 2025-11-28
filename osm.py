@@ -1,3 +1,6 @@
+import os
+import shutil
+
 import osmnx as ox
 import pandas as pd
 
@@ -45,9 +48,9 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
 
     # flatten rows if they contain lists
     # TODO: this should be chose best
-    rows_to_flatten = ["highway", "lanes"]
-    for col in rows_to_flatten:
-        edges[col] = first_if_list(edges[col])
+    # rows_to_flatten = ["highway", "lanes"]
+    # for col in rows_to_flatten:
+    #     edges[col] = first_if_list(edges[col])
 
     # parse width
     edges["width_float"] = edges["width"].apply(extract_width).astype("Float64")
@@ -65,33 +68,53 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
+    # delete contents of data/out directory
+    print("> Clearing data/out")
+    if os.path.exists(OUT_PATH):
+        shutil.rmtree(OUT_PATH)
+    os.makedirs(OUT_PATH, exist_ok=True)
+
     place = "Somerville, Massachusetts, USA"
-    print("Get bike network")
+    print("> Getting bike network")
     nodes, edges = get_network(place, "bike")
 
-    print("Process network")
+    print("> Processing network")
     edges = process_network(edges)
 
     # MODEL - SPEED: parse maxspeed
-    print("Prepare speed data")
+    print("> MODEL: Preparing speed data")
     edges["maxspeed_int"], edges["maxspeed_int_score"] = stressmodel.speed.run(edges)
 
     # MODEL - SEPARATION LEVEL: combine cycleway types
-    print("Prepare separation level data")
+    print("> MODEL: Preparing separation level data")
     edges["separation_level"], edges["separation_level_score"] = (
         stressmodel.separation_level.run(edges)
     )
 
+    # MODEL - CATEGORY: classify street types
+    print("> MODEL: Preparing street category data")
+    edges["street_classification"], edges["street_classification_score"] = (
+        stressmodel.classification.run(edges)
+    )
+
+    # TODO: lanes, road category, condition.
+
+    # rename highway to street_type
+    edges = edges.rename(columns={"highway": "street"})
+
+    # sort columns alphabetically again
+    edges = edges.reindex(sorted(edges.columns), axis=1)
+
     # save to csv
-    print("Saving to CSV")
+    print("> Saving to CSV")
     edges.to_csv(f"{OUT_PATH}_edges.csv", index=False)
 
-    print("Saving to GeoPackage")
+    print("> Saving to GeoPackage")
     edges.to_file(f"{OUT_PATH}.gpkg", layer="somerville_streets", driver="GPKG")
     nodes.to_file(f"{OUT_PATH}.gpkg", layer="somerville_nodes", driver="GPKG")
 
     # also save geojson
-    print("Saving to GeoJSON")
+    print("> Saving to GeoJSON")
     edges.to_file(f"{OUT_PATH}.geojson", driver="GeoJSON")
 
 
