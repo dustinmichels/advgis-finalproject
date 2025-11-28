@@ -23,6 +23,15 @@ Determining what type of cycleway infrastructure exists on each street segment, 
 
 ### Traffic safety
 
+## Next Steps
+
+School safety analysis:
+
+- Look at how safe it is to get to each school by bike.
+- Get centroids for each block group, then route from centroid to each school, and summarize the safety of the route.
+
+---
+
 ## Tests
 
 ```sh

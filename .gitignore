@@ -4,6 +4,7 @@ cache/
 # notebooks
 notebooks/.ipynb_checkpoints/
 notebooks/cache/
+notebooks/*.csv
 
 # QGIS project files
 *.qgz

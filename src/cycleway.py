@@ -72,14 +72,30 @@ def apply_buffer_to_list(values, row):
     return ["lane_buffered" if v == "lane" else v for v in values]
 
 
+def adjust_track_with_separation(row):
+    """
+    If cycleway is 'track' but separation is 'flex_post' or 'parking_lane', rename to 'lane_buffered'.
+    """
+    cycleway_all = row["cycleway_all"]
+    separation = row.get("cycleway:separation")
+
+    if "track" in cycleway_all and separation in ["flex_post", "parking_lane"]:
+        # Replace 'track' with 'lane_buffered'
+        cycleway_all = ["lane_buffered" if v == "track" else v for v in cycleway_all]
+    return cycleway_all
+
+
 def combine_and_score_cycleway_types(df):
     # combine all cycleway vals
     df["cycleway_all"] = df.apply(combine_cycleways, axis=1)
 
-    # apply buffer upgrade to list
+    # rename: if buffer exists, rename 'lane' to 'lane_buffered'
     df["cycleway_all"] = df.apply(
         lambda row: apply_buffer_to_list(row["cycleway_all"], row), axis=1
     )
+
+    # rename: if cycleway="track" but cycleway:separation="flex_post," rename to "lane_buffered"
+    df["cycleway_all"] = df.apply(adjust_track_with_separation, axis=1)
 
     # pick best
     df["cycleway_type"] = df["cycleway_all"].apply(pick_best)

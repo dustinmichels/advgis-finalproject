@@ -76,6 +76,10 @@ def main():
     print("Combine cycleway types")
     edges = combine_and_score_cycleway_types(edges)
 
+    # save to csv
+    print("Saving to CSV")
+    edges.to_csv("data/somerville_network.csv", index=False)
+
     print("Saving to GeoPackage")
     edges.to_file(OUTFILE, layer="somerville_streets", driver="GPKG")
     nodes.to_file(OUTFILE, layer="somerville_nodes", driver="GPKG")
