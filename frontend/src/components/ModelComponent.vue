@@ -1,29 +1,85 @@
 <template>
   <div class="box model-component">
-    <h2 class="title is-4">MODEL</h2>
+    <h2 class="title is-4">Customize Weights</h2>
     <div class="content">
       <div class="calibration-container">
+        <!-- Calibration bar -->
         <div class="calibration-bar" ref="barRef">
           <div
             v-for="(segment, index) in segments"
             :key="segment.name"
             class="segment"
+            :class="{ dimmed: activeView !== null && activeView !== index }"
             :style="{
               width: segment.value + '%',
               backgroundColor: segment.color,
             }"
           >
             <span class="segment-label"> {{ segment.name }} ({{ segment.value }}%) </span>
+            <!-- Icons inside each segment -->
+            <div class="segment-icons">
+              <button
+                class="icon-button"
+                :class="{ active: activeView === index }"
+                @click="toggleView(index)"
+                :title="activeView === index ? 'Show all categories' : 'Show only ' + segment.name"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+              <button
+                class="icon-button"
+                @click="openSettings(index)"
+                :title="'Settings for ' + segment.name"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path
+                    d="M12 1v6m0 6v6m5.196-15.804l-4.242 4.242m-5.908 5.908l-4.242 4.242M23 12h-6m-6 0H1m15.804-5.196l-4.242 4.242m-5.908 5.908l-4.242 4.242"
+                  ></path>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
-        <div class="handles">
+
+        <!-- Handles (only show when no view is active) -->
+        <div v-if="activeView === null" class="handles">
           <div
             v-for="(segment, index) in segments.slice(0, -1)"
             :key="'handle-' + index"
             class="handle"
             :style="{ left: getCumulativeWidth(index) + '%' }"
             @mousedown="startDrag(index, $event)"
-          ></div>
+          >
+            <div class="handle-grip">
+              <div class="grip-line"></div>
+              <div class="grip-line"></div>
+              <div class="grip-line"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -52,6 +108,7 @@ const segments = ref<Segment[]>([
 
 const barRef = ref<HTMLElement | null>(null)
 const draggingIndex = ref<number | null>(null)
+const activeView = ref<number | null>(null) // Track which view is active (null = all)
 
 const snapToIncrement = (value: number, increment: number = 5): number => {
   return Math.round(value / increment) * increment
@@ -62,11 +119,43 @@ const getCumulativeWidth = (index: number): number => {
 }
 
 const emitWeightChanges = () => {
-  emit('weightsChanged', {
-    separation_level: segments.value[0].value,
-    speed: segments.value[1].value,
-    busyness: segments.value[2].value,
-  })
+  // If a view is active, set other weights to 0 but keep visual slider positions
+  if (activeView.value !== null) {
+    const weights = {
+      separation_level: activeView.value === 0 ? 100 : 0,
+      speed: activeView.value === 1 ? 100 : 0,
+      busyness: activeView.value === 2 ? 100 : 0,
+    }
+    emit('weightsChanged', weights)
+  } else {
+    emit('weightsChanged', {
+      separation_level: segments.value[0].value,
+      speed: segments.value[1].value,
+      busyness: segments.value[2].value,
+    })
+  }
+}
+
+/**
+ * Toggle view for a specific segment
+ */
+const toggleView = (index: number) => {
+  if (activeView.value === index) {
+    // If clicking the active view, turn it off (show all)
+    activeView.value = null
+  } else {
+    // Set this as the active view
+    activeView.value = index
+  }
+  emitWeightChanges()
+}
+
+/**
+ * Placeholder for settings (to be implemented)
+ */
+const openSettings = (index: number) => {
+  console.log(`Opening settings for ${segments.value[index].name}`)
+  // TODO: Implement settings modal/panel
 }
 
 const startDrag = (index: number, event: MouseEvent) => {
@@ -146,6 +235,7 @@ onUnmounted(() => {
   position: relative;
 }
 
+/* Calibration bar */
 .calibration-bar {
   display: flex;
   height: 60px;
@@ -157,14 +247,21 @@ onUnmounted(() => {
 
 .segment {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: filter 0.2s;
+  transition: filter 0.3s;
   position: relative;
+  padding: 0.5rem;
 }
 
 .segment:hover {
   filter: brightness(1.1);
+}
+
+.segment.dimmed {
+  filter: grayscale(100%) brightness(0.8);
+  opacity: 0.5;
 }
 
 .segment-label {
@@ -174,6 +271,41 @@ onUnmounted(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   pointer-events: none;
   white-space: nowrap;
+}
+
+.segment-icons {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  pointer-events: all;
+}
+
+.icon-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+  padding: 0.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: white;
+}
+
+.icon-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.icon-button.active {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 1);
+  color: #363636;
+}
+
+.icon-button.active:hover {
+  background-color: rgba(255, 255, 255, 1);
 }
 
 .handles {
@@ -187,18 +319,56 @@ onUnmounted(() => {
 
 .handle {
   position: absolute;
-  top: 0;
-  width: 4px;
-  height: 100%;
-  background-color: rgba(255, 255, 255, 0.8);
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 80px;
   cursor: ew-resize;
   pointer-events: all;
-  transform: translateX(-2px);
-  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
 }
 
-.handle:hover {
-  background-color: rgba(255, 255, 255, 1);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+.handle-grip {
+  width: 24px;
+  height: 48px;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+  border: 2px solid #333;
+  border-radius: 8px;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.2s;
+}
+
+.handle:hover .handle-grip {
+  background: linear-gradient(135deg, #ffffff 0%, #e8e8e8 100%);
+  border-color: #000;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
+}
+
+.handle:active .handle-grip {
+  background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.grip-line {
+  width: 12px;
+  height: 2px;
+  background-color: #666;
+  border-radius: 1px;
 }
 </style>
