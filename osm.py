@@ -4,7 +4,7 @@ import shutil
 import osmnx as ox
 import pandas as pd
 
-import src.stressmodel as stressmodel
+import src.stressmodel as sm
 from util import extract_width, first_if_list
 
 OUT_PATH = "data/out"
@@ -77,19 +77,23 @@ def prepare_data_for_place(place: str):
 
     # MODEL - SPEED: parse maxspeed
     print(f"> MODEL: Preparing speed data for {place}")
-    edges["maxspeed_int"], edges["maxspeed_int_score"] = stressmodel.speed.run(edges)
+    edges["maxspeed_int"], edges["maxspeed_int_score"] = sm.speed.run(edges)
 
     # MODEL - SEPARATION LEVEL: combine cycleway types
     print(f"> MODEL: Preparing separation level data for {place}")
     edges["separation_level"], edges["separation_level_score"] = (
-        stressmodel.separation_level.run(edges)
+        sm.separation_level.run(edges)
     )
 
     # MODEL - CATEGORY: classify street types
     print(f"> MODEL: Preparing street category data for {place}")
     edges["street_classification"], edges["street_classification_score"] = (
-        stressmodel.classification.run(edges)
+        sm.classification.run(edges)
     )
+
+    # MODEL - LANES: parse number of lanes
+    print(f"> MODEL: Preparing lanes data for {place}")
+    edges["lanes_int"], edges["lanes_int_score"] = sm.lanes.run(edges)
 
     # TODO: condition (combo of smoothness and condition?) - condition is not standard
     # TODO: number of lanes (ideally in direction of travel)
@@ -97,6 +101,7 @@ def prepare_data_for_place(place: str):
     # copy some OG vals so they are easy to compare with new vals
     edges["street_0"] = edges["highway"]
     edges["maxspeed_0"] = edges["maxspeed"]
+    edges["lanes_0"] = edges["lanes"]
 
     # sort columns alphabetically again
     edges = edges.reindex(sorted(edges.columns), axis=1)
@@ -108,6 +113,7 @@ def prepare_data_for_place(place: str):
         "maxspeed_int_score",
         "separation_level_score",
         "street_classification_score",
+        "lanes_int_score",
     ]
     edges["composite_score"] = edges[scores].sum(axis=1) / len(scores)
 

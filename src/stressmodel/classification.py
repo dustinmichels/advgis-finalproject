@@ -6,6 +6,7 @@ import pandas as pd
 StreetInput = Union[str, List[str]]
 
 # Street type classifications
+# See: https://wiki.openstreetmap.org/wiki/Key:highway
 STREET_CLASSIFICATIONS = {
     # Cycleway category - dedicated bike infrastructure and low-traffic paths
     "cycleway": "dedicated_path",
