@@ -66,7 +66,7 @@ def extract_street_type(value: StreetInput) -> str:
         if not valid_types:
             return ""
         # Return the type with the highest classification score
-        return max(
+        return min(
             valid_types,
             key=lambda x: CLASSIFICATION_SCORES.get(
                 STREET_CLASSIFICATIONS.get(x, DEFAULT_CLASSIFICATION),

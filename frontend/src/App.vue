@@ -30,6 +30,7 @@
       :model-config="modelConfig"
       @close="settingsDataField = null"
       @update-score="handleUpdateScore"
+      @update-default-category="handleUpdateDefaultCategory"
     />
   </div>
 </template>
@@ -78,6 +79,13 @@ const handleOpenSettings = (dataField: string) => {
 const handleUpdateScore = (field: string, category: string, score: number) => {
   if (modelConfig.value[field as keyof BikeInfrastructureModel]?.categories[category]) {
     modelConfig.value[field as keyof BikeInfrastructureModel].categories[category].score = score
+  }
+}
+
+// Handle default category updates from SettingsModal
+const handleUpdateDefaultCategory = (field: string, defaultCategory: string | number) => {
+  if (modelConfig.value[field as keyof BikeInfrastructureModel]) {
+    modelConfig.value[field as keyof BikeInfrastructureModel].defaultCategory = defaultCategory
   }
 }
 </script>

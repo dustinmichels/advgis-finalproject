@@ -190,6 +190,17 @@ def main():
         # filter down to output columns
         edges = edges[OUTPUT_COLUMNS]
 
+        # add "_python" suffix to all computed score columns to differentiate from frontend
+        score_columns = [
+            "lanes_int_score",
+            "maxspeed_int_score",
+            "separation_level_score",
+            "street_classification_score",
+            "composite_score",
+        ]
+        for col in score_columns:
+            edges.rename(columns={col: f"{col}_python"}, inplace=True)
+
         # save data
         save_data_for_place(place, OUT_PATH, nodes, edges)
 

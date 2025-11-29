@@ -11,15 +11,17 @@ export const calculateSeparationScore = (
   const category = properties.separation_level
 
   if (!category) {
-    console.warn('Missing separation_level property, using default "none"')
-    return modelConfig.separation_level.categories['none']?.score ?? 5
+    const defaultCat = modelConfig.separation_level.defaultCategory || 'none'
+    const score = modelConfig.separation_level.categories[String(defaultCat)]?.score ?? 5
+    return score
   }
 
   const score = modelConfig.separation_level.categories[category]?.score
 
   if (score === undefined) {
-    console.warn(`Unknown separation_level category '${category}', using default 5`)
-    return 5
+    console.warn(`Unknown separation_level category '${category}', using default`)
+    const defaultCat = modelConfig.separation_level.defaultCategory || 'none'
+    return modelConfig.separation_level.categories[String(defaultCat)]?.score ?? 5
   }
 
   return score
@@ -36,15 +38,17 @@ export const calculateStreetClassificationScore = (
   const category = properties.street_classification
 
   if (!category) {
-    console.warn('Missing street_classification property, using default "residential"')
-    return modelConfig.street_classification.categories['residential']?.score ?? 2
+    const defaultCat = modelConfig.street_classification.defaultCategory || 'residential'
+    const score = modelConfig.street_classification.categories[String(defaultCat)]?.score ?? 2
+    return score
   }
 
   const score = modelConfig.street_classification.categories[category]?.score
 
   if (score === undefined) {
-    console.warn(`Unknown street_classification category '${category}', using default 2`)
-    return 2
+    console.warn(`Unknown street_classification category '${category}', using default`)
+    const defaultCat = modelConfig.street_classification.defaultCategory || 'residential'
+    return modelConfig.street_classification.categories[String(defaultCat)]?.score ?? 2
   }
 
   return score
@@ -60,40 +64,40 @@ export const calculateSpeedScore = (
 ): number => {
   const maxspeedValue = properties.maxspeed_int
 
+  // Helper function to map speed to category
+  const speedToCategory = (speed: number): string => {
+    if (speed <= 20) return '20_mph_or_less'
+    if (speed <= 25) return '25_mph'
+    if (speed <= 30) return '30_mph'
+    if (speed <= 40) return '40_mph'
+    if (speed <= 50) return '50_mph'
+    return 'over_50_mph'
+  }
+
   if (maxspeedValue === undefined || maxspeedValue === null) {
-    console.warn('Missing maxspeed_int property, using default "25_mph"')
-    return modelConfig.speed_limit.categories['25_mph']?.score ?? 1
+    const defaultSpeed = Number(modelConfig.speed_limit.defaultCategory) || 25
+    const category = speedToCategory(defaultSpeed)
+    return modelConfig.speed_limit.categories[category]?.score ?? 1
   }
 
   // Convert to number if it's a string
   const speed = typeof maxspeedValue === 'number' ? maxspeedValue : parseInt(String(maxspeedValue))
 
   if (isNaN(speed)) {
-    console.warn(`Invalid maxspeed_int value '${maxspeedValue}', using default 3`)
-    return 3
+    console.warn(`Invalid maxspeed_int value '${maxspeedValue}', using default`)
+    const defaultSpeed = Number(modelConfig.speed_limit.defaultCategory) || 25
+    const category = speedToCategory(defaultSpeed)
+    return modelConfig.speed_limit.categories[category]?.score ?? 1
   }
 
-  // Map integer speed to category using <= logic
-  let category: string
-  if (speed <= 20) {
-    category = '20_mph_or_less'
-  } else if (speed <= 25) {
-    category = '25_mph'
-  } else if (speed <= 30) {
-    category = '30_mph'
-  } else if (speed <= 40) {
-    category = '40_mph'
-  } else if (speed <= 50) {
-    category = '50_mph'
-  } else {
-    category = 'over_50_mph'
-  }
-
+  const category = speedToCategory(speed)
   const score = modelConfig.speed_limit.categories[category]?.score
 
   if (score === undefined) {
-    console.warn(`Unknown speed category '${category}', using default 3`)
-    return 3
+    console.warn(`Unknown speed category '${category}', using default`)
+    const defaultSpeed = Number(modelConfig.speed_limit.defaultCategory) || 25
+    const defaultCategory = speedToCategory(defaultSpeed)
+    return modelConfig.speed_limit.categories[defaultCategory]?.score ?? 1
   }
 
   return score

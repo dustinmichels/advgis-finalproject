@@ -13,6 +13,7 @@ export interface ParameterData {
   img?: string
   link?: string
   notes: string
+  defaultCategory?: string | number // Default category to use when data is missing
   categories: Record<string, CategoryData>
 }
 
@@ -29,10 +30,10 @@ export interface ModelWeights {
 }
 
 export interface StreetProperties {
-  // Category fields from GeoJSON (these are the actual values we use for scoring)
+  // Category fields from GeoJSON
   separation_level?: string // e.g., "lane", "track", "none"
   street_classification?: string // e.g., "residential", "medium-capacity"
-  maxspeed_int?: string // e.g., "25_mph", "30_mph"
+  maxspeed_int?: number | string // Integer speed value (e.g., 25, 30, 40)
 
   // Other properties
   name?: string

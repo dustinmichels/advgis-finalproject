@@ -10,6 +10,45 @@
         <div v-if="parameterData">
           <p class="mb-4">{{ parameterData.notes }}</p>
 
+          <!-- Default Category Selector -->
+          <div class="box mb-4 default-category-box">
+            <h4 class="title is-6 mb-3">Default Value (for missing data)</h4>
+            <p class="is-size-7 mb-3">
+              When a street is missing this property, use this category as the default:
+            </p>
+
+            <!-- For speed_limit (number input) -->
+            <div v-if="dataField === 'speed_limit'" class="field">
+              <label class="label is-size-7">Default Speed (mph)</label>
+              <div class="control">
+                <input
+                  class="input"
+                  type="number"
+                  v-model.number="localDefaultCategory"
+                  @change="onDefaultCategoryChange"
+                  min="0"
+                  max="100"
+                  step="5"
+                />
+              </div>
+              <p class="help">Integer value (e.g., 25, 30, 40)</p>
+            </div>
+
+            <!-- For other parameters (dropdown) -->
+            <div v-else class="field">
+              <label class="label is-size-7">Default Category</label>
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select v-model="localDefaultCategory" @change="onDefaultCategoryChange">
+                    <option v-for="(category, key) in localCategories" :key="key" :value="key">
+                      {{ category.displayLabel }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="is-flex is-justify-content-flex-end mb-4">
             <button class="button is-small reset-button" @click="resetScores">
               <span class="icon is-small">
@@ -85,6 +124,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   close: []
   updateScore: [field: string, category: string, score: number]
+  updateDefaultCategory: [field: string, defaultCategory: string | number]
 }>()
 
 // Color palette
@@ -98,6 +138,7 @@ const colors = {
 
 // Local state for categories with scores
 const localCategories = ref<Record<string, any>>({})
+const localDefaultCategory = ref<string | number>('')
 
 // Computed property to get the parameter data
 const parameterData = computed(() => {
@@ -123,6 +164,18 @@ watch(
     if (parameterData.value?.categories) {
       localCategories.value = JSON.parse(JSON.stringify(parameterData.value.categories))
     }
+    if (parameterData.value?.defaultCategory !== undefined) {
+      localDefaultCategory.value = parameterData.value.defaultCategory
+    } else {
+      // Fallback defaults if not set
+      if (props.dataField === 'separation_level') {
+        localDefaultCategory.value = 'none'
+      } else if (props.dataField === 'street_classification') {
+        localDefaultCategory.value = 'residential'
+      } else if (props.dataField === 'speed_limit') {
+        localDefaultCategory.value = 25
+      }
+    }
   },
   { immediate: true },
 )
@@ -142,11 +195,19 @@ const onScoreChange = (categoryKey: string, event: Event) => {
   }
 }
 
+// Handle default category change
+const onDefaultCategoryChange = () => {
+  if (props.dataField) {
+    emit('updateDefaultCategory', props.dataField, localDefaultCategory.value)
+  }
+}
+
 // Reset all scores to original values
 const resetScores = () => {
   if (!props.dataField) return
 
-  const originalData = BIKE_INFRASTRUCTURE_MODEL[props.dataField as keyof BikeInfrastructureModel]
+  const originalData =
+    BIKE_INFRASTRUCTURE_MODEL[props.dataField as keyof typeof BIKE_INFRASTRUCTURE_MODEL]
   if (originalData?.categories) {
     localCategories.value = JSON.parse(JSON.stringify(originalData.categories))
 
@@ -157,6 +218,12 @@ const resetScores = () => {
         emit('updateScore', props.dataField!, categoryKey, originalScore)
       }
     })
+
+    // Reset default category
+    if (originalData.defaultCategory !== undefined) {
+      localDefaultCategory.value = originalData.defaultCategory
+      emit('updateDefaultCategory', props.dataField, originalData.defaultCategory)
+    }
   }
 }
 
@@ -191,6 +258,11 @@ const closeModal = () => {
 .modal-card-body .box {
   background-color: v-bind('colors.light');
   border-left: 4px solid v-bind('colors.accent');
+}
+
+.default-category-box {
+  background-color: #fff9e6 !important;
+  border-left: 4px solid v-bind('colors.primary') !important;
 }
 
 .category-name {

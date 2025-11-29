@@ -15,13 +15,27 @@ import type { BikeInfrastructureModel, ModelWeights } from '@/types'
  * 1. Read these fields from your GeoJSON
  * 2. Look up the score for each category in this model
  * 3. Calculate a weighted composite score based on the model weights
+ *
+ * DEFAULT VALUES:
+ * When a GeoJSON feature is missing a required field, these defaults are used:
+ * - separation_level: "none"
+ * - street_classification: "residential"
+ * - maxspeed_int: 25
  */
+
+// Default categories to use when GeoJSON is missing data
+export const DEFAULT_CATEGORIES = {
+  separation_level: 'none',
+  street_classification: 'residential',
+  maxspeed_int: 25,
+}
 
 export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
   // 1️⃣ Separation Level (50%)
   separation_level: {
     weight: 50,
     displayLabel: 'Separation Level',
+    defaultCategory: 'none',
     img: '',
     link: 'https://wiki.openstreetmap.org/wiki/Key:cycleway',
     notes:
@@ -77,6 +91,7 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
   street_classification: {
     weight: 25,
     displayLabel: 'Busyness',
+    defaultCategory: 'residential',
     img: '',
     notes:
       'Evaluates the type of street and its primary function. Lower-traffic streets and dedicated paths score higher.',
@@ -113,6 +128,7 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
   speed_limit: {
     weight: 25,
     displayLabel: 'Speed Limit',
+    defaultCategory: 25, // Integer value, will be mapped to '25_mph' category
     img: '',
     notes:
       'Speed limits of adjacent motor vehicle traffic. Lower speeds create safer environments for cycling. The maxspeed_int field should contain integer values (e.g., 25, 30, 40) which are mapped to these categories using <= logic.',

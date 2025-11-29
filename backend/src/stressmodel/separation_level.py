@@ -45,7 +45,7 @@ def combine_cycleways(row):
 
 
 def pick_best(values):
-    return max(values, key=lambda v: RANKING.get(v, 0), default=None)
+    return min(values, key=lambda v: RANKING.get(v, 0), default=None)
 
 
 def apply_buffer_to_list(values, row):
