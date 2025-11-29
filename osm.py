@@ -7,12 +7,16 @@ import pandas as pd
 import src.stressmodel as stressmodel
 from util import extract_width, first_if_list
 
-OUT_PATH = "data/out/somerville_network"
+OUT_PATH = "data/out"
+# PLACE = "Somerville, Massachusetts, USA"
+# PLACE = "Cambridge, Massachusetts, USA"
+PLACE = "Boulder, Colorado, USA"
 
 # add cycleway to useful tags
 ox.settings.useful_tags_way = ox.settings.useful_tags_way + [
     "massgis:way_id",
     "condition",
+    "smoothness",
     "surface",
     "bicycle",
     "cycleway",
@@ -67,55 +71,69 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
     return edges
 
 
-def main():
-    # delete contents of data/out directory
-    print("> Clearing data/out")
-    if os.path.exists(OUT_PATH):
-        shutil.rmtree(OUT_PATH)
-    os.makedirs(OUT_PATH, exist_ok=True)
-
-    place = "Somerville, Massachusetts, USA"
-    print("> Getting bike network")
+def prepare_data_for_place(place: str):
+    print(f"> Getting bike network for {place}")
     nodes, edges = get_network(place, "bike")
 
-    print("> Processing network")
+    print(f"> Processing network for {place}")
     edges = process_network(edges)
 
     # MODEL - SPEED: parse maxspeed
-    print("> MODEL: Preparing speed data")
+    print(f"> MODEL: Preparing speed data for {place}")
     edges["maxspeed_int"], edges["maxspeed_int_score"] = stressmodel.speed.run(edges)
 
     # MODEL - SEPARATION LEVEL: combine cycleway types
-    print("> MODEL: Preparing separation level data")
+    print(f"> MODEL: Preparing separation level data for {place}")
     edges["separation_level"], edges["separation_level_score"] = (
         stressmodel.separation_level.run(edges)
     )
 
     # MODEL - CATEGORY: classify street types
-    print("> MODEL: Preparing street category data")
+    print(f"> MODEL: Preparing street category data for {place}")
     edges["street_classification"], edges["street_classification_score"] = (
         stressmodel.classification.run(edges)
     )
 
-    # TODO: lanes, road category, condition.
+    # TODO: condition (combo of smoothness and condition?) - condition is not standard
+    # TODO: number of lanes (ideally in direction of travel)
 
-    # rename highway to street_type
-    edges = edges.rename(columns={"highway": "street"})
+    # copy some OG vals so they are easy to compare with new vals
+    edges["street_0"] = edges["highway"]
+    edges["maxspeed_0"] = edges["maxspeed"]
 
     # sort columns alphabetically again
     edges = edges.reindex(sorted(edges.columns), axis=1)
 
-    # save to csv
-    print("> Saving to CSV")
-    edges.to_csv(f"{OUT_PATH}_edges.csv", index=False)
+    return nodes, edges
 
-    print("> Saving to GeoPackage")
-    edges.to_file(f"{OUT_PATH}.gpkg", layer="somerville_streets", driver="GPKG")
-    nodes.to_file(f"{OUT_PATH}.gpkg", layer="somerville_nodes", driver="GPKG")
+
+def save_data_for_place(place: str, out_path: str, nodes, edges):
+    place_first_word = place.split(",")[0].replace(" ", "_").lower()
+    out_path = f"{out_path}/{place_first_word}"
+
+    # save to csv
+    print(f"> Saving edges to CSV for {place}")
+    edges.to_csv(f"{out_path}_streets.csv", index=True)
+
+    # also save to GeoPackage
+    print(f"> Saving edges and nodes to GeoPackage for {place}")
+    edges.to_file(f"{out_path}_streets.gpkg", layer="streets", driver="GPKG")
+    nodes.to_file(f"{out_path}_streets.gpkg", layer="nodes", driver="GPKG")
 
     # also save geojson
-    print("> Saving to GeoJSON")
-    edges.to_file(f"{OUT_PATH}.geojson", driver="GeoJSON")
+    print(f"> Saving edges to GeoJSON for {place}")
+    edges.to_file(f"{out_path}_streets.geojson", driver="GeoJSON")
+
+
+def main():
+    # delete contents of data/out directory
+    # print("> Clearing data/out")
+    # if os.path.exists(OUT_PATH):
+    #     shutil.rmtree(OUT_PATH)
+    # os.makedirs(OUT_PATH, exist_ok=True)
+
+    nodes, edges = prepare_data_for_place(PLACE)
+    save_data_for_place(PLACE, OUT_PATH, nodes, edges)
 
 
 if __name__ == "__main__":
