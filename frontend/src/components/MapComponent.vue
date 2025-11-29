@@ -146,7 +146,7 @@ let map: L.Map | null = null
 let geojsonLayer: L.GeoJSON | null = null
 let boundaryLayer: L.GeoJSON | null = null
 
-// Color palette: 11 distinct colors for scores 0-10
+// Color palette: 9 colors for scores 0-10 (provided yellow to green scale)
 const colorPalette = [
   '#ffffe5', // 0
   '#f7fcb9', // 1
@@ -156,9 +156,9 @@ const colorPalette = [
   '#41ab5d', // 5
   '#238443', // 6
   '#006837', // 7
-  '#005a32', // 8
-  '#004529', // 9
-  '#003320', // 10
+  '#004529', // 8
+  '#004529', // 9 (reuse last color)
+  '#004529', // 10 (reuse last color)
 ]
 
 // Color scale function: 0 to 10 using the 11 discrete colors
@@ -500,12 +500,12 @@ defineExpose({
     #238443 63.63%,
     #006837 63.63%,
     #006837 72.72%,
-    #005a32 72.72%,
-    #005a32 81.81%,
+    #004529 72.72%,
+    #004529 81.81%,
     #004529 81.81%,
     #004529 90.9%,
-    #003320 90.9%,
-    #003320 100%
+    #004529 90.9%,
+    #004529 100%
   );
   border-radius: 2px;
   margin-bottom: 5px;
