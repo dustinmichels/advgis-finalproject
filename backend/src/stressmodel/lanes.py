@@ -6,11 +6,11 @@ import pandas as pd
 LanesInput = Union[str, int, float, List[str], None]
 
 LANES_RANKINGS = [
-    (2, 8),  # 1-2 lanes -> 8 points
-    (3, 6),  # 3 lanes -> 6 points
-    (4, 4),  # 4 lanes -> 4 points
-    (5, 2),  # 5 lanes -> 2 points
-    (float("inf"), 1),  # 6+ lanes -> 1 point
+    (2, 0),  # 1-2 lanes -> 0 points
+    (3, 2),  # 3 lanes -> 2 points
+    (4, 3),  # 4 lanes -> 3 points
+    (5, 4),  # 5 lanes -> 4 points
+    (float("inf"), 5),  # 6+ lanes -> 5 point
 ]
 
 DEFAULT_LANES = None  # Global default for missing lane values

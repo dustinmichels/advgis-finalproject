@@ -37,10 +37,10 @@ STREET_CLASSIFICATIONS = {
 
 # Scores for each classification (best to worst for cycling)
 CLASSIFICATION_SCORES = {
-    "dedicated_path": 10,
-    "residential": 7,
-    "medium-capacity": 3,
-    "motorway": 0,
+    "dedicated_path": 0,
+    "residential": 2,
+    "medium-capacity": 4,
+    "motorway": 5,
 }
 
 # Default classification for unknown types

@@ -6,13 +6,13 @@ import numpy as np
 import pandas as pd
 
 RANKING = {
-    "none": 0,
-    "shared_lane": 2,  # in traffic
-    "share_busway": 5,  # shared with bus
-    "lane": 7,  # dedicated bike lane, not separate
-    "lane_buffered": 7.5,  # Added buffered lane type
-    "track": 8,  # totally separated (but sometimes used for lane with buffer)
-    "separate": 10,  # totally separated
+    "separate": 0,  # totally separated
+    "track": 1,  # totally separated (but sometimes used for lane with buffer)
+    "lane_buffered": 2,  # Added buffered lane type
+    "lane": 3,  # dedicated bike lane, not separate
+    "share_busway": 4,  # shared with bus
+    "shared_lane": 4.5,  # in traffic
+    "none": 5,  # no cycling infrastructure
 }
 
 

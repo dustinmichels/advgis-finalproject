@@ -8,12 +8,12 @@ SpeedInput = Union[str, float, List[str]]
 DEFAULT_SPEED_LIMIT = None  # Global default speed limit in mph
 
 SPEED_RANKINGS = [
-    (20, 10),  # <= 20 mph -> 10 points
-    (25, 8),  # <= 25 mph -> 8 points
-    (30, 5),  # <= 30 mph -> 5 points
-    (40, 3),  # <= 40 mph -> 3 points
-    (50, 2),  # <= 50 mph -> 2 points
-    (float("inf"), 1),  # > 50 mph -> 1 point
+    (20, 0),  # <= 20 mph -> 0 points
+    (25, 1),  # <= 25 mph -> 1 point
+    (30, 3),  # <= 30 mph -> 2 points
+    (40, 4),  # <= 40 mph -> 3 points
+    (50, 4.5),  # <= 50 mph -> 4.5 points
+    (float("inf"), 5),  # > 50 mph -> 5 points
 ]
 
 
