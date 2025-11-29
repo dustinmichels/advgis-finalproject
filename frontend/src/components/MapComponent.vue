@@ -7,6 +7,16 @@
     <div class="notification is-info is-light" v-if="loading">Loading map data...</div>
 
     <div ref="mapContainer" class="map-container"></div>
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="legend-title">Composite Score</div>
+      <div class="legend-gradient"></div>
+      <div class="legend-labels">
+        <span>0 (Worst)</span>
+        <span>10 (Best)</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -38,6 +48,32 @@ const loading = ref(true)
 
 let map: L.Map | null = null
 let geojsonLayer: L.GeoJSON | null = null
+
+// Color scale function: 0 (red) to 10 (green)
+const getColorForScore = (score: number): string => {
+  // Clamp score between 0 and 10
+  const clampedScore = Math.max(0, Math.min(10, score))
+
+  // Normalize to 0-1 range
+  const normalized = clampedScore / 10
+
+  // Color gradient from red (bad) to yellow (medium) to green (good)
+  if (normalized < 0.5) {
+    // Red to Yellow (0 to 0.5)
+    const ratio = normalized * 2
+    const r = 255
+    const g = Math.round(ratio * 255)
+    const b = 0
+    return `rgb(${r}, ${g}, ${b})`
+  } else {
+    // Yellow to Green (0.5 to 1)
+    const ratio = (normalized - 0.5) * 2
+    const r = Math.round(255 * (1 - ratio))
+    const g = 255
+    const b = 0
+    return `rgb(${r}, ${g}, ${b})`
+  }
+}
 
 // Initialize map and load GeoJSON
 onMounted(async () => {
@@ -112,10 +148,12 @@ const addGeoJsonToMap = (geojsonData: any) => {
         }
       },
       style: (feature) => {
-        // Style for streets with thicker lines
+        // Get composite_score from properties
+        const compositeScore = feature?.properties?.composite_score ?? 5 // Default to middle if missing
+
         return {
-          color: '#3273dc',
-          weight: 2,
+          color: getColorForScore(compositeScore),
+          weight: 3,
           opacity: 0.8,
         }
       },
@@ -138,6 +176,7 @@ const addGeoJsonToMap = (geojsonData: any) => {
   width: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .title {
@@ -149,5 +188,42 @@ const addGeoJsonToMap = (geojsonData: any) => {
   min-height: 400px;
   border-radius: 4px;
   overflow: hidden;
+}
+
+.legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 10px 15px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+}
+
+.legend-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.legend-gradient {
+  width: 200px;
+  height: 20px;
+  background: linear-gradient(
+    to right,
+    rgb(255, 0, 0) 0%,
+    rgb(255, 255, 0) 50%,
+    rgb(0, 255, 0) 100%
+  );
+  border-radius: 2px;
+  margin-bottom: 5px;
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
 }
 </style>
