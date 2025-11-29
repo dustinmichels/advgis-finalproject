@@ -64,6 +64,7 @@ const useGoodColors = ref(true)
 onMounted(async () => {
   try {
     const response = await fetch('/somerville_streets.geojson')
+    // const response = await fetch('/cambridge_streets.geojson')
     if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
     const data = await response.json()
     geojsonData.value = data

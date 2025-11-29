@@ -12,7 +12,7 @@ OUT_PATH = "data/out"
 PLACES = [
     "Somerville, Massachusetts, USA",
     "Cambridge, Massachusetts, USA",
-    # "Boulder, Colorado, USA",
+    "Boston, Massachusetts, USA",
 ]
 
 # add cycleway to useful tags

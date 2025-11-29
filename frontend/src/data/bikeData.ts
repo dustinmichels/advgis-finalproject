@@ -38,27 +38,26 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
     defaultCategory: 'none',
     img: '',
     link: 'https://wiki.openstreetmap.org/wiki/Key:cycleway',
-    notes:
-      'Measures the physical separation between cyclists and motor vehicle traffic. Higher scores indicate less separation and higher risk for cyclists.',
+    notes: 'Low = better, high = worse',
     categories: {
       separate: {
         score: 0,
         displayLabel: 'Completely Separated',
         img: '',
-        notes: 'Completely separated infrastructure - no interaction with motor vehicle traffic',
+        notes: 'Completely separated infrastructure',
       },
       track: {
         score: 1,
         displayLabel: 'Protected Track',
         img: '',
-        notes:
-          'Physically separated bike track (protected bike lane), sometimes also used for buffered lanes',
+        notes: 'Physically separated bike track (protected bike lane)',
       },
       lane_buffered: {
         score: 2,
         displayLabel: 'Buffered Bike Lane',
         img: '',
-        notes: 'Bike lane with a painted buffer zone between cyclists and motor vehicles',
+        notes:
+          'Could be a painted buffer or physical buffer (e.g., bollards) separating bike lane from traffic. In the data, sometimes used interchangeably with "track".',
       },
       lane: {
         score: 3,
@@ -70,7 +69,7 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
         score: 4,
         displayLabel: 'Shared Bus Lane',
         img: '',
-        notes: 'Cyclists share a dedicated bus lane or transitway',
+        notes: 'Cyclists share a dedicated lane with buses',
       },
       shared_lane: {
         score: 4.5,
@@ -82,7 +81,7 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
         score: 5,
         displayLabel: 'No Separation',
         img: '',
-        notes: 'No separation - cyclists share the road directly with motor vehicles',
+        notes: 'No separation & probably no markings',
       },
     },
   },
@@ -128,44 +127,43 @@ export const BIKE_INFRASTRUCTURE_MODEL: BikeInfrastructureModel = {
     displayLabel: 'Speed Limit',
     defaultCategory: 25, // Integer value, will be mapped to '25_mph' category
     img: '',
-    notes:
-      'Speed limits of adjacent motor vehicle traffic. Lower speeds create safer environments for cycling. The maxspeed_int field should contain integer values (e.g., 25, 30, 40) which are mapped to these categories using <= logic.',
+    notes: '',
     categories: {
       '20_mph_or_less': {
         score: 0,
         displayLabel: '≤ 20 mph',
         img: '',
-        notes: 'Maximum speed limit of 20 mph or less - safest for cycling',
+        notes: '',
       },
       '25_mph': {
         score: 1,
         displayLabel: '25 mph',
         img: '',
-        notes: 'Maximum speed limit of 25 mph',
+        notes: '',
       },
       '30_mph': {
         score: 3,
         displayLabel: '30 mph',
         img: '',
-        notes: 'Maximum speed limit of 30 mph',
+        notes: '',
       },
       '40_mph': {
         score: 4,
         displayLabel: '40 mph',
         img: '',
-        notes: 'Maximum speed limit of 40 mph',
+        notes: '',
       },
       '50_mph': {
         score: 4.5,
         displayLabel: '50 mph',
         img: '',
-        notes: 'Maximum speed limit of 50 mph',
+        notes: '',
       },
       over_50_mph: {
         score: 5,
         displayLabel: '> 50 mph',
         img: '',
-        notes: 'Speed limit over 50 mph - least safe for cycling',
+        notes: '',
       },
     },
   },
