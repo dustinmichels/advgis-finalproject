@@ -89,13 +89,13 @@
 </template>
 
 <script setup lang="ts">
-import { DEFAULT_WEIGHTS, type ModelWeights } from '@/data/bikeData'
+import type { ModelWeights } from '@/types'
 import { onMounted, onUnmounted, ref } from 'vue'
 
 interface SegmentConfig {
   displayName: string
   fieldName: keyof ModelWeights
-  dataField: string | null // Maps to BIKE_INFRASTRUCTURE_DATA field (null if not applicable)
+  dataField: string | null // Maps to model config field
   value: number
   color: string
 }
@@ -106,7 +106,11 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  weights: () => ({ ...DEFAULT_WEIGHTS }),
+  weights: () => ({
+    separation_level: 50,
+    speed: 25,
+    busyness: 25,
+  }),
 })
 
 // Emit events
@@ -120,21 +124,21 @@ const segments = ref<SegmentConfig[]>([
   {
     displayName: 'Separation level',
     fieldName: 'separation_level',
-    dataField: 'separation_level', // Maps to BIKE_INFRASTRUCTURE_DATA.separation_level
+    dataField: 'separation_level',
     value: props.weights.separation_level,
     color: '#3273dc',
   },
   {
     displayName: 'Speed',
     fieldName: 'speed',
-    dataField: 'speed_limit', // Maps to BIKE_INFRASTRUCTURE_DATA.speed_limit
+    dataField: 'speed_limit',
     value: props.weights.speed,
     color: '#48c774',
   },
   {
     displayName: 'Busyness',
     fieldName: 'busyness',
-    dataField: 'street_classification', // Maps to BIKE_INFRASTRUCTURE_DATA.street_classification
+    dataField: 'street_classification',
     value: props.weights.busyness,
     color: '#ffdd57',
   },

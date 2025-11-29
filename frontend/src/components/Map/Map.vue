@@ -11,10 +11,18 @@
     <!-- Legend -->
     <div class="legend">
       <div class="legend-title">Composite Score</div>
-      <div class="legend-gradient" :style="legendGradientStyle"></div>
+
+      <div class="legend-colors">
+        <div
+          v-for="(color, index) in legendColors"
+          :key="index"
+          :style="{ backgroundColor: color }"
+          class="legend-color-block"
+        ></div>
+      </div>
 
       <div class="legend-labels">
-        <span v-for="n in 11" :key="n - 1">{{ n - 1 }}</span>
+        <span v-for="n in legendColors.length" :key="n - 1">{{ n - 1 }}</span>
       </div>
     </div>
 
@@ -29,83 +37,20 @@
     <!-- Color Scale Toggle -->
     <div class="color-toggle">
       <label class="checkbox">
-        <input type="checkbox" v-model="useGoodColors" @change="updateColors" />
+        <input type="checkbox" :checked="useGoodColors" @change="$emit('toggleColors')" />
         Use Good Colors
       </label>
-    </div>
-
-    <!-- Score Controls -->
-    <div class="score-controls" v-if="showControls">
-      <div class="score-control-title">Adjust Weights</div>
-
-      <div class="weight-slider">
-        <label>Max Speed Score: {{ weights.maxspeed_int_score.toFixed(1) }}</label>
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          v-model.number="weights.maxspeed_int_score"
-          @input="onWeightsChange"
-        />
-      </div>
-
-      <div class="weight-slider">
-        <label>Separation Level Score: {{ weights.separation_level_score.toFixed(1) }}</label>
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          v-model.number="weights.separation_level_score"
-          @input="onWeightsChange"
-        />
-      </div>
-
-      <div class="weight-slider">
-        <label
-          >Street Classification Score: {{ weights.street_classification_score.toFixed(1) }}</label
-        >
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          v-model.number="weights.street_classification_score"
-          @input="onWeightsChange"
-        />
-      </div>
-
-      <div class="weight-slider">
-        <label>Lanes Score: {{ weights.lanes_int_score.toFixed(1) }}</label>
-        <input
-          type="range"
-          min="0"
-          max="2"
-          step="0.1"
-          v-model.number="weights.lanes_int_score"
-          @input="onWeightsChange"
-        />
-      </div>
-
-      <button class="button is-small" @click="resetWeights">Reset Weights</button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  type GeoJsonData,
-  type ScoreWeights,
-  defaultWeights,
-  recalculateAllScores,
-} from '@/utils/scoreManager'
-
+import type { BikeInfrastructureModel, GeoJsonData, GeoJsonFeature, ModelWeights } from '@/types'
 import { badColors, goodColors } from '@/utils/colorScale'
-
+import { calculateAllScores } from '@/utils/scoreCalculator'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 // Fix Leaflet marker assets
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png'
@@ -125,28 +70,28 @@ L.Marker.prototype.options.icon = DefaultIcon
 
 // Props
 interface Props {
-  showControls?: boolean
+  geojsonData: GeoJsonData | null
+  modelConfig: BikeInfrastructureModel
+  modelWeights: ModelWeights
+  useGoodColors?: boolean
 }
 const props = withDefaults(defineProps<Props>(), {
-  showControls: false,
+  useGoodColors: true,
 })
+
+// Emits
+const emit = defineEmits<{
+  toggleColors: []
+}>()
 
 // Refs
 const mapContainer = ref<HTMLElement | null>(null)
 const error = ref('')
-const loading = ref(true)
-const currentZoom = ref(15)
-const currentLineWidth = ref(3)
+const loading = ref(false)
 const showBoundary = ref(true)
-const useGoodColors = ref(true)
 
-// GeoJSON data
-const originalGeoJson = ref<GeoJsonData | null>(null)
-const currentGeoJson = ref<GeoJsonData | null>(null)
+// Boundary data
 const boundaryGeoJson = ref<any | null>(null)
-
-// Score weights
-const weights = reactive<ScoreWeights>({ ...defaultWeights })
 
 // Leaflet layers
 let map: L.Map | null = null
@@ -154,34 +99,78 @@ let geojsonLayer: L.GeoJSON | null = null
 let boundaryLayer: L.GeoJSON | null = null
 
 /* ------------------------------------------------------------
-  COLOR SCALE ACCESS
+  COLOR SCALE
 ------------------------------------------------------------ */
 
+const legendColors = computed(() => (props.useGoodColors ? goodColors : badColors))
+
 const getColorForScore = (score: number): string => {
-  const colors = useGoodColors.value ? goodColors : badColors
-  const clamped = Math.max(0, Math.min(10, score))
-  return colors[Math.round(clamped)]
+  const colors = props.useGoodColors ? goodColors : badColors
+  const clamped = Math.max(0, Math.min(5, score))
+  const idx = Math.round((clamped / 5) * (colors.length - 1))
+  return colors[idx]
 }
 
-// Legend gradient style computed from color scale
-const legendGradientStyle = computed(() => {
-  const colors = useGoodColors.value ? goodColors : badColors
-  const stops = colors.map((c, i) => `${c} ${(i / (colors.length - 1)) * 100}%`).join(', ')
-  return { background: `linear-gradient(to right, ${stops})` }
-})
+/* ------------------------------------------------------------
+  COMPUTE SCORES FOR GEOJSON
+------------------------------------------------------------ */
 
-const updateColors = () => {
-  if (!geojsonLayer) return
-  geojsonLayer.setStyle((feature) => {
-    const score = feature?.properties?.composite_score ?? 5
-    const zoom = map?.getZoom() ?? 15
-    return {
-      color: getColorForScore(score),
-      weight: getLineWeight(zoom),
-      opacity: 0.9,
+const computedGeoJson = computed<GeoJsonData | null>(() => {
+  if (!props.geojsonData) return null
+
+  // Deep copy the GeoJSON
+  const data = JSON.parse(JSON.stringify(props.geojsonData))
+
+  const scoresSummary: number[] = []
+
+  // Calculate scores for each feature
+  data.features.forEach((feature: GeoJsonFeature, index: number) => {
+    // IMPORTANT: Remove any pre-existing score columns from the GeoJSON
+    // We want to use ONLY our newly calculated scores
+    delete feature.properties.separation_level_score
+    delete feature.properties.street_classification_score
+    delete feature.properties.maxspeed_int_score
+    delete feature.properties.composite_score
+
+    // Calculate fresh scores
+    const scores = calculateAllScores(feature.properties, props.modelConfig, props.modelWeights)
+
+    // Add newly computed scores to properties
+    Object.assign(feature.properties, scores)
+    scoresSummary.push(scores.composite_score)
+
+    // Log first 5 features for debugging
+    if (index < 5) {
+      console.log(`Feature ${index}:`, {
+        name: feature.properties.name,
+        separation_level: feature.properties.separation_level,
+        street_classification: feature.properties.street_classification,
+        maxspeed_int: feature.properties.maxspeed_int,
+        calculated_scores: scores,
+      })
     }
   })
-}
+
+  // Log score distribution
+  const uniqueScores = new Set(scoresSummary)
+  console.log('Score calculation summary:', {
+    totalFeatures: data.features.length,
+    uniqueScores: uniqueScores.size,
+    scoreRange: {
+      min: Math.min(...scoresSummary),
+      max: Math.max(...scoresSummary),
+      avg: (scoresSummary.reduce((a, b) => a + b, 0) / scoresSummary.length).toFixed(2),
+    },
+    sampleScores: scoresSummary.slice(0, 10),
+  })
+
+  if (uniqueScores.size === 1) {
+    console.warn('⚠️ ALL STREETS HAVE THE SAME SCORE:', scoresSummary[0])
+    console.warn('This means the scoring logic is not varying. Check the logs above.')
+  }
+
+  return data
+})
 
 /* ------------------------------------------------------------
   LINE WIDTH VS ZOOM
@@ -216,11 +205,8 @@ onMounted(async () => {
         const zoom = map.getZoom()
         const lineWeight = getLineWeight(zoom)
 
-        currentZoom.value = zoom
-        currentLineWidth.value = lineWeight
-
         geojsonLayer.setStyle((feature) => {
-          const score = feature?.properties?.composite_score ?? 5
+          const score = feature?.properties?.composite_score ?? 2.5
           return {
             color: getColorForScore(score),
             weight: lineWeight,
@@ -231,7 +217,6 @@ onMounted(async () => {
     })
 
     await loadBoundary()
-    await loadGeoJson()
   }
 })
 
@@ -272,33 +257,8 @@ const addBoundaryToMap = (geojsonData: any) => {
 }
 
 /* ------------------------------------------------------------
-  GEOJSON LOADING
+  GEOJSON RENDERING
 ------------------------------------------------------------ */
-const loadGeoJson = async () => {
-  try {
-    loading.value = true
-    error.value = ''
-
-    const response = await fetch('/somerville_streets.geojson')
-    if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
-
-    const data = await response.json()
-    originalGeoJson.value = data
-    currentGeoJson.value = recalculateAllScores(data, weights)
-
-    addGeoJsonToMap(currentGeoJson.value)
-
-    if (map) {
-      currentZoom.value = map.getZoom()
-      currentLineWidth.value = getLineWeight(currentZoom.value)
-    }
-  } catch (e) {
-    error.value = `Error loading GeoJSON: ${e instanceof Error ? e.message : 'Unknown error'}`
-  } finally {
-    loading.value = false
-  }
-}
-
 const addGeoJsonToMap = (geojsonData: GeoJsonData) => {
   if (!map) return
 
@@ -308,13 +268,14 @@ const addGeoJsonToMap = (geojsonData: GeoJsonData) => {
     onEachFeature: (feature, layer) => {
       if (feature.properties) {
         const popup = Object.entries(feature.properties)
+          .filter(([k]) => !k.startsWith('_')) // Skip internal properties
           .map(([k, v]) => `<strong>${k}:</strong> ${typeof v === 'number' ? v.toFixed(2) : v}`)
           .join('<br>')
         layer.bindPopup(popup)
       }
     },
     style: (feature) => {
-      const score = feature?.properties?.composite_score ?? 5
+      const score = feature?.properties?.composite_score ?? 2.5
       const zoom = map?.getZoom() ?? 15
 
       return {
@@ -329,19 +290,34 @@ const addGeoJsonToMap = (geojsonData: GeoJsonData) => {
   if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50] })
 }
 
-/* ------------------------------------------------------------
-  SCORE WEIGHTS
------------------------------------------------------------- */
-const onWeightsChange = () => {
-  if (!originalGeoJson.value) return
-  currentGeoJson.value = recalculateAllScores(originalGeoJson.value, weights)
-  addGeoJsonToMap(currentGeoJson.value)
-}
+// Watch for changes to computed GeoJSON and re-render
+watch(
+  computedGeoJson,
+  (newData) => {
+    if (newData) {
+      addGeoJsonToMap(newData)
+    }
+  },
+  { immediate: true },
+)
 
-const resetWeights = () => {
-  Object.assign(weights, defaultWeights)
-  onWeightsChange()
-}
+// Watch for color scheme changes
+watch(
+  () => props.useGoodColors,
+  () => {
+    if (geojsonLayer) {
+      geojsonLayer.setStyle((feature) => {
+        const score = feature?.properties?.composite_score ?? 2.5
+        const zoom = map?.getZoom() ?? 15
+        return {
+          color: getColorForScore(score),
+          weight: getLineWeight(zoom),
+          opacity: 0.9,
+        }
+      })
+    }
+  },
+)
 
 /* ------------------------------------------------------------
   BOUNDARY TOGGLE
@@ -350,18 +326,6 @@ const toggleBoundary = () => {
   if (!map || !boundaryLayer) return
   showBoundary.value ? map.addLayer(boundaryLayer) : map.removeLayer(boundaryLayer)
 }
-
-/* ------------------------------------------------------------
-  EXPOSE
------------------------------------------------------------- */
-defineExpose({
-  recalculateScores: onWeightsChange,
-  resetScores: resetWeights,
-  setWeights: (w: Partial<ScoreWeights>) => {
-    Object.assign(weights, w)
-    onWeightsChange()
-  },
-})
 </script>
 
 <style scoped>
@@ -398,11 +362,17 @@ defineExpose({
   font-size: 14px;
 }
 
-.legend-gradient {
-  width: 220px;
+.legend-colors {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 5px;
+}
+
+.legend-color-block {
+  flex: 1;
   height: 20px;
   border-radius: 2px;
-  margin-bottom: 5px;
+  border: 1px solid #ccc;
 }
 
 .legend-labels {
@@ -451,42 +421,5 @@ defineExpose({
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-/* Score controls */
-.score-controls {
-  position: absolute;
-  top: 80px;
-  right: 20px;
-  background: white;
-  padding: 15px;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  min-width: 250px;
-}
-
-.score-control-title {
-  font-weight: bold;
-  margin-bottom: 12px;
-}
-
-.weight-slider {
-  margin-bottom: 12px;
-}
-
-.weight-slider label {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 4px;
-}
-
-.weight-slider input[type='range'] {
-  width: 100%;
-}
-
-.button {
-  width: 100%;
-  margin-top: 8px;
 }
 </style>

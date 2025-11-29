@@ -30,7 +30,7 @@
               <input
                 type="range"
                 min="0"
-                max="10"
+                max="5"
                 step="0.5"
                 v-model.number="category.score"
                 class="slider"
@@ -38,8 +38,8 @@
               />
               <div class="slider-labels">
                 <span class="has-text-grey-light">0</span>
+                <span class="has-text-grey-light">2.5</span>
                 <span class="has-text-grey-light">5</span>
-                <span class="has-text-grey-light">10</span>
               </div>
             </div>
 
@@ -71,11 +71,13 @@
 </template>
 
 <script setup lang="ts">
-import { BIKE_INFRASTRUCTURE_DATA } from '@/data/bikeData'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { BIKE_INFRASTRUCTURE_MODEL } from '@/data/bikeData'
+import type { BikeInfrastructureModel } from '@/types'
+import { computed, ref, watch } from 'vue'
 
 interface Props {
   dataField: string | null
+  modelConfig: BikeInfrastructureModel
 }
 
 const props = defineProps<Props>()
@@ -100,7 +102,7 @@ const localCategories = ref<Record<string, any>>({})
 // Computed property to get the parameter data
 const parameterData = computed(() => {
   if (!props.dataField) return null
-  return BIKE_INFRASTRUCTURE_DATA[props.dataField as keyof typeof BIKE_INFRASTRUCTURE_DATA]
+  return props.modelConfig[props.dataField as keyof BikeInfrastructureModel]
 })
 
 // Computed property for display name
@@ -142,18 +144,19 @@ const onScoreChange = (categoryKey: string, event: Event) => {
 
 // Reset all scores to original values
 const resetScores = () => {
-  if (parameterData.value?.categories) {
-    localCategories.value = JSON.parse(JSON.stringify(parameterData.value.categories))
+  if (!props.dataField) return
+
+  const originalData = BIKE_INFRASTRUCTURE_MODEL[props.dataField as keyof BikeInfrastructureModel]
+  if (originalData?.categories) {
+    localCategories.value = JSON.parse(JSON.stringify(originalData.categories))
 
     // Emit reset events for all categories
-    if (props.dataField) {
-      Object.keys(localCategories.value).forEach((categoryKey) => {
-        const originalScore = parameterData.value?.categories[categoryKey]?.score
-        if (originalScore !== undefined) {
-          emit('updateScore', props.dataField!, categoryKey, originalScore)
-        }
-      })
-    }
+    Object.keys(localCategories.value).forEach((categoryKey) => {
+      const originalScore = originalData.categories[categoryKey]?.score
+      if (originalScore !== undefined) {
+        emit('updateScore', props.dataField!, categoryKey, originalScore)
+      }
+    })
   }
 }
 
@@ -161,21 +164,6 @@ const resetScores = () => {
 const closeModal = () => {
   emit('close')
 }
-
-// Handle Escape key press
-const handleKeydown = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.dataField) {
-    closeModal()
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('keydown', handleKeydown)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeydown)
-})
 </script>
 
 <style scoped>

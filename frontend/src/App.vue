@@ -2,7 +2,13 @@
   <div class="container is-fluid main-container">
     <div class="columns top-row">
       <div class="column is-two-thirds">
-        <MapComponent ref="mapRef" />
+        <MapComponent
+          :geojson-data="geojsonData"
+          :model-config="modelConfig"
+          :model-weights="modelWeights"
+          :use-good-colors="useGoodColors"
+          @toggle-colors="useGoodColors = !useGoodColors"
+        />
       </div>
       <div class="column is-one-third">
         <AboutComponent />
@@ -11,6 +17,7 @@
     <div class="columns bottom-row">
       <div class="column">
         <ModelComponent
+          :weights="modelWeights"
           @weights-changed="handleWeightsChanged"
           @open-settings="handleOpenSettings"
         />
@@ -18,37 +25,60 @@
     </div>
 
     <!-- Settings Modal -->
-    <SettingsModal :data-field="settingsDataField" @close="settingsDataField = null" />
+    <SettingsModal
+      :data-field="settingsDataField"
+      :model-config="modelConfig"
+      @close="settingsDataField = null"
+      @update-score="handleUpdateScore"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { percentagesToWeights } from '@/utils/scoreManager'
-import { ref } from 'vue'
+import { BIKE_INFRASTRUCTURE_MODEL, DEFAULT_WEIGHTS } from '@/data/bikeData'
+import type { BikeInfrastructureModel, GeoJsonData, ModelWeights } from '@/types'
+import { onMounted, ref } from 'vue'
 import AboutComponent from './components/AboutComponent.vue'
 import MapComponent from './components/Map/Map.vue'
 import ModelComponent from './components/ModelComponent.vue'
 import SettingsModal from './components/SettingsModal.vue'
 
-const mapRef = ref()
+// State
+const geojsonData = ref<GeoJsonData | null>(null)
+const modelConfig = ref<BikeInfrastructureModel>(
+  JSON.parse(JSON.stringify(BIKE_INFRASTRUCTURE_MODEL)),
+)
+const modelWeights = ref<ModelWeights>({ ...DEFAULT_WEIGHTS })
 const settingsDataField = ref<string | null>(null)
+const useGoodColors = ref(true)
 
-const handleWeightsChanged = (percentages: {
-  separation_level: number
-  speed: number
-  busyness: number
-}) => {
-  // Convert percentages to normalized weights
-  const weights = percentagesToWeights(percentages)
+// Load GeoJSON data on mount
+onMounted(async () => {
+  try {
+    const response = await fetch('/somerville_streets.geojson')
+    if (!response.ok) throw new Error(`HTTP error: ${response.status}`)
+    const data = await response.json()
+    geojsonData.value = data
+  } catch (e) {
+    console.error('Error loading GeoJSON:', e)
+  }
+})
 
-  // Update the map with new weights
-  // This triggers recalculation of composite scores and map re-render
-  mapRef.value?.setWeights(weights)
+// Handle weight changes from ModelComponent
+const handleWeightsChanged = (weights: ModelWeights) => {
+  modelWeights.value = { ...weights }
 }
 
 // Handle opening settings modal
 const handleOpenSettings = (dataField: string) => {
   settingsDataField.value = dataField
+}
+
+// Handle score updates from SettingsModal
+const handleUpdateScore = (field: string, category: string, score: number) => {
+  if (modelConfig.value[field as keyof BikeInfrastructureModel]?.categories[category]) {
+    modelConfig.value[field as keyof BikeInfrastructureModel].categories[category].score = score
+  }
 }
 </script>
 
