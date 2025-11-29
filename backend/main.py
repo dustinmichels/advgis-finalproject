@@ -66,7 +66,13 @@ def get_network(place: str, network_type: str = "bike"):
     G = ox.graph_from_place(place, network_type=network_type)
 
     # project graph to EPSG:26986 (Massachusetts Mainland)
-    # G = ox.project_graph(G, to_crs="EPSG:26986")
+    G = ox.project_graph(G, to_crs="EPSG:26986")
+
+    # consolidate intersections within 10 meters
+    G = ox.consolidate_intersections(G, tolerance=10)
+
+    # project back to WGS84
+    G = ox.project_graph(G, to_crs="EPSG:4326")
 
     nodes, edges = ox.graph_to_gdfs(G)
     return nodes, edges

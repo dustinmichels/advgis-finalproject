@@ -13,16 +13,26 @@
       <div class="legend-title">Composite Score</div>
       <div class="legend-gradient"></div>
       <div class="legend-labels">
-        <span>0 (Worst)</span>
-        <span>10 (Best)</span>
+        <span>0</span>
+        <span>1</span>
+        <span>2</span>
+        <span>3</span>
+        <span>4</span>
+        <span>5</span>
+        <span>6</span>
+        <span>7</span>
+        <span>8</span>
+        <span>9</span>
+        <span>10</span>
       </div>
     </div>
 
-    <!-- Debug Overlay -->
-    <div class="debug-overlay">
-      <div class="debug-title">Debug Info</div>
-      <div class="debug-item">Zoom: {{ currentZoom.toFixed(1) }}</div>
-      <div class="debug-item">Line Width: {{ currentLineWidth }}px</div>
+    <!-- Boundary Toggle -->
+    <div class="boundary-toggle">
+      <label class="checkbox">
+        <input type="checkbox" v-model="showBoundary" @change="toggleBoundary" />
+        Show Boundary
+      </label>
     </div>
 
     <!-- Score Controls (optional - you can show/hide this) -->
@@ -121,6 +131,7 @@ const error = ref('')
 const loading = ref(true)
 const currentZoom = ref(15) // Track current zoom level
 const currentLineWidth = ref(3) // Track current line width
+const showBoundary = ref(true) // Track boundary visibility
 
 // GeoJSON data storage
 const originalGeoJson = ref<GeoJsonData | null>(null) // Preserve original from server
@@ -135,60 +146,30 @@ let map: L.Map | null = null
 let geojsonLayer: L.GeoJSON | null = null
 let boundaryLayer: L.GeoJSON | null = null
 
-// Color palette from light to dark green
+// Color palette: 11 distinct colors for scores 0-10
 const colorPalette = [
-  '#ffffe5',
-  '#f7fcb9',
-  '#d9f0a3',
-  '#addd8e',
-  '#78c679',
-  '#41ab5d',
-  '#238443',
-  '#006837',
-  '#004529',
+  '#ffffe5', // 0
+  '#f7fcb9', // 1
+  '#d9f0a3', // 2
+  '#addd8e', // 3
+  '#78c679', // 4
+  '#41ab5d', // 5
+  '#238443', // 6
+  '#006837', // 7
+  '#005a32', // 8
+  '#004529', // 9
+  '#003320', // 10
 ]
 
-// Color scale function: 0 to 10 using the color palette
+// Color scale function: 0 to 10 using the 11 discrete colors
 const getColorForScore = (score: number): string => {
   // Clamp score between 0 and 10
   const clampedScore = Math.max(0, Math.min(10, score))
 
-  // Normalize to 0-1 range
-  const normalized = clampedScore / 10
+  // Round to nearest integer to get discrete color index
+  const index = Math.round(clampedScore)
 
-  // Map to palette index (0 to 8)
-  const index = normalized * (colorPalette.length - 1)
-  const lowerIndex = Math.floor(index)
-  const upperIndex = Math.ceil(index)
-
-  // If exact match, return that color
-  if (lowerIndex === upperIndex) {
-    return colorPalette[lowerIndex]
-  }
-
-  // Otherwise interpolate between two colors
-  const ratio = index - lowerIndex
-  const lowerColor = colorPalette[lowerIndex]
-  const upperColor = colorPalette[upperIndex]
-
-  // Parse hex colors
-  const lower = {
-    r: parseInt(lowerColor.slice(1, 3), 16),
-    g: parseInt(lowerColor.slice(3, 5), 16),
-    b: parseInt(lowerColor.slice(5, 7), 16),
-  }
-  const upper = {
-    r: parseInt(upperColor.slice(1, 3), 16),
-    g: parseInt(upperColor.slice(3, 5), 16),
-    b: parseInt(upperColor.slice(5, 7), 16),
-  }
-
-  // Interpolate
-  const r = Math.round(lower.r + (upper.r - lower.r) * ratio)
-  const g = Math.round(lower.g + (upper.g - lower.g) * ratio)
-  const b = Math.round(lower.b + (upper.b - lower.b) * ratio)
-
-  return `rgb(${r}, ${g}, ${b})`
+  return colorPalette[index]
 }
 
 // Calculate line weight based on zoom level
@@ -296,14 +277,15 @@ const addBoundaryToMap = (geojsonData: any) => {
       map.removeLayer(boundaryLayer)
     }
 
-    // Add new boundary layer with light grey, semi-transparent fill
+    // Add new boundary layer with fun pink color and subtle fill
     boundaryLayer = L.geoJSON(geojsonData, {
       style: {
-        fillColor: '#cccccc',
-        fillOpacity: 0.2,
-        color: '#999999',
-        weight: 2,
-        opacity: 0.5,
+        fillColor: '#001a33',
+        fillOpacity: 0.08,
+        color: '#ff1493',
+        weight: 4,
+        opacity: 0.7,
+        dashArray: '4 6',
       },
     }).addTo(map)
   } catch (e) {
@@ -385,12 +367,10 @@ const addGeoJsonToMap = (geojsonData: GeoJsonData) => {
       },
     }).addTo(map)
 
-    // Fit map to GeoJSON bounds (only on initial load)
-    if (!geojsonLayer) {
-      const bounds = geojsonLayer.getBounds()
-      if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [1, 1] })
-      }
+    // Fit map to GeoJSON bounds
+    const bounds = geojsonLayer.getBounds()
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] })
     }
   } catch (e) {
     error.value = `Error adding GeoJSON to map: ${e instanceof Error ? e.message : 'Unknown error'}`
@@ -415,6 +395,17 @@ const resetWeights = () => {
   weights.street_classification_score = defaultWeights.street_classification_score
   weights.lanes_int_score = defaultWeights.lanes_int_score
   onWeightsChange()
+}
+
+// Toggle boundary visibility
+const toggleBoundary = () => {
+  if (!map || !boundaryLayer) return
+
+  if (showBoundary.value) {
+    map.addLayer(boundaryLayer)
+  } else {
+    map.removeLayer(boundaryLayer)
+  }
 }
 
 // Expose methods for parent components
@@ -466,19 +457,32 @@ defineExpose({
 }
 
 .legend-gradient {
-  width: 200px;
+  width: 220px;
   height: 20px;
   background: linear-gradient(
     to right,
     #ffffe5 0%,
-    #f7fcb9 12.5%,
-    #d9f0a3 25%,
-    #addd8e 37.5%,
-    #78c679 50%,
-    #41ab5d 62.5%,
-    #238443 75%,
-    #006837 87.5%,
-    #004529 100%
+    #ffffe5 9.09%,
+    #f7fcb9 9.09%,
+    #f7fcb9 18.18%,
+    #d9f0a3 18.18%,
+    #d9f0a3 27.27%,
+    #addd8e 27.27%,
+    #addd8e 36.36%,
+    #78c679 36.36%,
+    #78c679 45.45%,
+    #41ab5d 45.45%,
+    #41ab5d 54.54%,
+    #238443 54.54%,
+    #238443 63.63%,
+    #006837 63.63%,
+    #006837 72.72%,
+    #005a32 72.72%,
+    #005a32 81.81%,
+    #004529 81.81%,
+    #004529 90.9%,
+    #003320 90.9%,
+    #003320 100%
   );
   border-radius: 2px;
   margin-bottom: 5px;
@@ -487,34 +491,39 @@ defineExpose({
 .legend-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 10px;
   color: #666;
 }
 
-.debug-overlay {
+.legend-labels span {
+  width: 20px;
+  text-align: center;
+}
+
+.boundary-toggle {
   position: absolute;
-  top: 20px;
+  bottom: 20px;
   right: 20px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
+  background: white;
   padding: 10px 15px;
   border-radius: 4px;
-  font-family: monospace;
-  font-size: 12px;
-  z-index: 1001;
-  min-width: 150px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
 }
 
-.debug-title {
-  font-weight: bold;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: #00ff00;
+.boundary-toggle .checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 0;
 }
 
-.debug-item {
-  margin-bottom: 3px;
-  line-height: 1.4;
+.boundary-toggle input[type='checkbox'] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
 }
 
 .score-controls {
