@@ -15,6 +15,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "bulma": "^1.0.4",
     "vue": "^3.5.25"
   },
   "devDependencies": {

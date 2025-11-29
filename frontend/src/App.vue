@@ -1,47 +1,48 @@
-<script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
-import TheWelcome from './components/TheWelcome.vue'
-</script>
-
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="./assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+  <div class="container is-fluid main-container">
+    <div class="columns is-gapless top-row">
+      <div class="column is-two-thirds">
+        <MapComponent />
+      </div>
+      <div class="column is-one-third">
+        <AboutComponent />
+      </div>
     </div>
-  </header>
-
-  <main>
-    <TheWelcome />
-  </main>
+    <div class="columns is-gapless bottom-row">
+      <div class="column">
+        <ModelComponent />
+      </div>
+    </div>
+  </div>
 </template>
 
+<script setup lang="ts">
+import AboutComponent from './components/AboutComponent.vue'
+import MapComponent from './components/MapComponent.vue'
+import ModelComponent from './components/ModelComponent.vue'
+</script>
+
 <style scoped>
-header {
-  line-height: 1.5;
+.main-container {
+  height: 100vh;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
+.top-row {
+  flex: 2;
+  margin: 0 !important;
 }
 
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
+.bottom-row {
+  flex: 1;
+  margin: 0 !important;
+}
 
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
+.column {
+  padding: 0.25rem;
+  display: flex;
 }
 </style>
