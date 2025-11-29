@@ -1,6 +1,6 @@
 <template>
   <div class="container is-fluid main-container">
-    <div class="columns is-gapless top-row">
+    <div class="columns top-row">
       <div class="column is-two-thirds">
         <MapComponent />
       </div>
@@ -8,7 +8,7 @@
         <AboutComponent />
       </div>
     </div>
-    <div class="columns is-gapless bottom-row">
+    <div class="columns bottom-row">
       <div class="column">
         <ModelComponent />
       </div>
