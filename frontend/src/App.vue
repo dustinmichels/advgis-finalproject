@@ -26,7 +26,7 @@
 import { percentagesToWeights } from '@/utils/scoreManager'
 import { ref } from 'vue'
 import AboutComponent from './components/AboutComponent.vue'
-import MapComponent from './components/MapComponent.vue'
+import MapComponent from './components/Map/Map.vue'
 import ModelComponent from './components/ModelComponent.vue'
 import SettingsModal from './components/SettingsModal.vue'
 

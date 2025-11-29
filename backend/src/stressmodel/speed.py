@@ -73,6 +73,12 @@ def run(df):
     # extract maxspeed
     df["maxspeed_int"] = df["maxspeed"].apply(extract_maxspeed)
 
+    # if "highway=residential" and maxspeed is missing, set to 20 mph
+    mask_residential_missing = (df["highway"] == "residential") & (
+        df["maxspeed_int"].isna()
+    )
+    df.loc[mask_residential_missing, "maxspeed_int"] = 20
+
     # apply default for missing values (if configured)
     if DEFAULT_SPEED_LIMIT is not None:
         df["maxspeed_int"] = (

@@ -84,6 +84,9 @@ def process_network(edges: pd.DataFrame) -> pd.DataFrame:
         ["ref", "service", "access", "bridge", "tunnel", "junction"], axis=1
     )
 
+    # if "name" is null, drop the row
+    edges = edges[edges["name"].notnull()]
+
     # parse width
     edges["width_float"] = edges["width"].apply(extract_width).astype("Float64")
 
